@@ -46,5 +46,5 @@ def analyze_url(url: str):
 
 if __name__ == "__main__":
     # Example usage with sample data
-    sample_url = "https://www.office.com/"    
+    sample_url = "https://www.amazon.com/"    
     analyze_url(sample_url)
