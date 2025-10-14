@@ -62,9 +62,16 @@ def initial_analysis(state: GraphState):
         identified_brand = "Unknown"
         
     domain_results = search_online_knowledge.invoke({"query": domain, "search_type": "domain"})
-    brand_results = search_online_knowledge.invoke({"query": identified_brand, "search_type": "brand"})
+    keywords_for_search = ' '.join(data['cleaned_text'].split()[:15])
+    brand_results = search_online_knowledge.invoke({
+        "query": identified_brand, 
+        "search_type": "brand",
+        "content_keywords": keywords_for_search  # <-- Pass the keywords here
+    })
+    
     verification_results = {"domain_results": domain_results, "brand_results": brand_results, "identified_brand": identified_brand}
     print(f"--- Verification Results ---\n{json.dumps(verification_results, indent=2)}")
+
 
     # Visual analysis is also part of the initial data gathering
     # This logic remains the same

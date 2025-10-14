@@ -1,16 +1,17 @@
+# in online_search.py
+
 import os
 import requests
 from urllib.parse import urlparse
 from langchain.tools import tool
 
 @tool
-def search_online_knowledge(query: str, search_type: str) -> list:
+def search_online_knowledge(query: str, search_type: str, content_keywords: str = "") -> list:
     """
     Searches the web using the Google Custom Search JSON API to verify a domain or find official brand websites.
     'search_type' must be 'domain' or 'brand'.
+    'content_keywords' is an optional string of keywords from the webpage to refine brand searches.
     """
-    print(f"--- TOOL USED: Searching for '{query}' (type: {search_type}) ---")
-
     api_key = os.getenv("GOOGLE_API_KEY")
     cse_id = os.getenv("GOOGLE_CSE_ID")
     
@@ -20,36 +21,39 @@ def search_online_knowledge(query: str, search_type: str) -> list:
 
     # The search query is formatted differently based on the search type
     if search_type == "domain":
-        # Using "site:" operator is a good way to check if a domain is well-known
         search_query = f"site:{query}"
     elif search_type == "brand":
+        # ENHANCED: Append content keywords if they exist to create a smarter query
         search_query = f"{query} official website"
+        if content_keywords:
+            search_query += f" {content_keywords}"
     else:
         return []
+
+    # This print statement will now show the enhanced query
+    print(f"--- TOOL USED: Searching for '{search_query}' (type: {search_type}) ---")
 
     url = "https://www.googleapis.com/customsearch/v1"
     params = {
         'key': api_key,
         'cx': cse_id,
         'q': search_query,
-        'num': 5 # We only need the top few results
+        'num': 5
     }
 
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        response.raise_for_status()
         results = response.json()
 
         if not results.get("items"):
             return []
 
-        # Extract the root domain (netloc) from each search result link
         found_domains = set()
         for item in results["items"]:
             link = item.get("link")
             if link:
                 domain = urlparse(link).netloc
-                # Standardize by removing 'www.' if it exists
                 if domain.startswith('www.'):
                     domain = domain[4:]
                 found_domains.add(domain)

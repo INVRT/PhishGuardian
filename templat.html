@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuardian Analysis Report</title>
+    <style>
+        :root {
+            --background-color: #f0f2f5;
+            --box-background: #ffffff;
+            --text-color: #1a202c;
+            --header-color: #2d3748;
+            --border-color: #e2e8f0;
+            --shadow-color: rgba(0, 0, 0, 0.06);
+            --green: #2f855a;
+            --red: #c53030;
+            --grid-gap: 1rem;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--header-color);
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(100px, auto);
+            gap: var(--grid-gap);
+        }
+
+        .bento-box {
+            background-color: var(--box-background);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .bento-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Spanning classes for the grid */
+        .col-span-1 { grid-column: span 1; }
+        .col-span-2 { grid-column: span 2; }
+        .col-span-4 { grid-column: span 4; }
+        .row-span-1 { grid-row: span 1; }
+        .row-span-2 { grid-row: span 2; }
+
+        .box-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--header-color);
+            margin: 0 0 1rem 0;
+        }
+
+        .box-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* Styles for Parsed Markdown Content */
+        .box-content p { margin: 0 0 0.75rem 0; }
+        .box-content p:last-child { margin-bottom: 0; }
+        .box-content ul {
+            padding-left: 1.5rem;
+            margin: 0.5rem 0;
+        }
+        .box-content li { margin-bottom: 0.25rem; }
+        .box-content code {
+            background-color: #edf2f7;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+        }
+        
+        /* Custom styles for specific boxes */
+        #verdict-box {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+        }
+        #verdict-box .verdict-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        #verdict-box.benign { background-color: var(--green); }
+        #verdict-box.phishing { background-color: var(--red); }
+        #verdict-box .intention-text {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+            opacity: 0.9;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #reasoning-box .box-content {
+             white-space: pre-wrap; /* Keep this for the judge's reasoning */
+        }
+
+        .verification-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .verification-list li {
+            padding-bottom: 0.5rem;
+        }
+
+        /* Scrollbar styles for content overflow */
+        .box-content::-webkit-scrollbar { width: 6px; }
+        .box-content::-webkit-scrollbar-track { background: #f1f1f1; }
+        .box-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px;}
+        .box-content::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>PhishGuardian Analysis Report</h1>
+        </header>
+        <div class="bento-grid" id="bento-grid">
+            </div>
+    </div>
+
+    <script>
+        // MODIFIED: Sample data now simulates a PHISHING result to show the malicious intent field.
+        const reportData = {
+            "decision": "PHISHING",
+            "reasoning": "Final Verdict: PHISHING\nJustification: Although the visual layout is similar to Instagram, the URL Analyst identified a critical issue: the domain is `instagram-login.net`, a clear case of typosquatting. The HTML Analyst found a form that submits credentials to an external, non-Meta domain. This combination of a deceptive domain and suspicious form submission strongly indicates a phishing attempt for credential theft.",
+            "malicious_intention": "Credential Theft",
+            "debate_summary": [{
+                "round": 1,
+                "analyses": {
+                    "URL Analyst": "- **Claim:** Phishing\n- **Confidence:** 1.0\n- **Evidence:**\n* **Domain:** `instagram-login.net` is not the official domain. This is a classic typosquatting technique to deceive users.",
+                    "HTML Analyst": "- **Claim:** Malicious\n- **Confidence:** 0.9\n- **Evidence:**\n- Found a `<form>` element whose `action` attribute points to `http://phisher-data-collector.com/submit`. Submitting login data to an external third-party domain is a huge red flag.",
+                    "Content Analyst": "- **Claim:** Phishing intent detected.\n- **Confidence:** 0.8\n- **Evidence:** The text contains urgent language like 'Your account has been suspended, log in immediately to recover it,' which is a common social engineering tactic.",
+                    "Brand Analyst": "- **Claim:** Yes\n- **Identified Brand:** Instagram\n- **Confidence:** 1.0\n- **Evidence:** The page uses the Instagram logo and mimics its branding, but the URL and text suggest a clear impersonation attempt.",
+                    "Visual Analyst": "- **Comparison Verdict:** SIMILAR\n- **Visual Risk Assessment:** High\n- **Justification:** While visually similar to the real login page, the fact that it's hosted on a non-official domain makes this a high-risk visual deception."
+                }
+            }],
+            "verification_data": { "domain_results": [], "brand_results": ["instagram.com", "help.instagram.com"], "identified_brand": "Instagram" }
+        };
+
+        function parseSimpleMarkdown(text) {
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`(.*?)`/g, '<code>$1</code>');
+
+            const lines = html.split('\n');
+            let inList = false;
+            let resultHtml = '';
+
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+                    if (!inList) {
+                        resultHtml += '<ul>';
+                        inList = true;
+                    }
+                    resultHtml += `<li>${trimmedLine.substring(2)}</li>`;
+                } else {
+                    if (inList) {
+                        resultHtml += '</ul>';
+                        inList = false;
+                    }
+                    if (trimmedLine.length > 0) {
+                        resultHtml += `<p>${trimmedLine}</p>`;
+                    }
+                }
+            });
+
+            if (inList) {
+                resultHtml += '</ul>';
+            }
+            return resultHtml;
+        }
+
+        function createBentoBox(options) {
+            const { title, content, colSpan, rowSpan, id, customClass, useMarkdown } = options;
+            const box = document.createElement('div');
+            box.className = `bento-box col-span-${colSpan || 1} row-span-${rowSpan || 1} ${customClass || ''}`;
+            if (id) box.id = id;
+
+            if (title) {
+                const titleEl = document.createElement('h3');
+                titleEl.className = 'box-title';
+                titleEl.textContent = title;
+                box.appendChild(titleEl);
+            }
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'box-content';
+            contentEl.innerHTML = useMarkdown ? parseSimpleMarkdown(content) : content;
+            box.appendChild(contentEl);
+
+            return box;
+        }
+
+        function buildReport(data) {
+            const grid = document.getElementById('bento-grid');
+            
+            const verdictClass = data.decision.toLowerCase();
+            let verdictContent = `<div class="verdict-text">${data.decision}</div>`;
+            if (verdictClass === 'phishing' && data.malicious_intention && data.malicious_intention !== 'N/A') {
+                verdictContent += `<span class="intention-text">Intention: ${data.malicious_intention}</span>`;
+            }
+            grid.appendChild(createBentoBox({ content: verdictContent, colSpan: 2, id: 'verdict-box', customClass: verdictClass }));
+
+            const verificationContent = `
+                <ul class="verification-list">
+                    <li><strong>Identified Brand:</strong> ${data.verification_data.identified_brand}</li>
+                    <li><strong>Domain Search Results:</strong> ${data.verification_data.domain_results.length > 0 ? data.verification_data.domain_results.join(', ') : '<em>None Found</em>'}</li>
+                    <li><strong>Brand Search Results:</strong> ${data.verification_data.brand_results.join(', ')}</li>
+                </ul>`;
+            grid.appendChild(createBentoBox({ title: "External Verification", content: verificationContent, colSpan: 2 }));
+            
+            grid.appendChild(createBentoBox({ title: "Judge's Final Reasoning", content: data.reasoning, colSpan: 4, id: 'reasoning-box' }));
+
+            const analyses = data.debate_summary[0].analyses;
+            const agentLayout = [
+                { name: "URL Analyst", span: 2 },
+                { name: "Visual Analyst", span: 2 },
+                { name: "HTML Analyst", span: 2 },
+                { name: "Content Analyst", span: 1 },
+                { name: "Brand Analyst", span: 1 },
+            ];
+
+            agentLayout.forEach(agent => {
+                if (analyses[agent.name]) {
+                    grid.appendChild(createBentoBox({
+                        title: agent.name,
+                        content: analyses[agent.name],
+                        colSpan: agent.span,
+                        useMarkdown: true
+                    }));
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => buildReport(reportData));
+    </script>
+</body>
+</html>

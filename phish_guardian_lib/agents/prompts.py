@@ -14,8 +14,17 @@ url_analyst_prompt = PromptTemplate.from_template(
 )
 
 html_analyst_prompt = PromptTemplate.from_template(
-    """You are an expert in web security. Review the HTML structure of a webpage. Differentiate between standard web development practices (like tracking pixels, CAPTCHA forms, hidden fields for state management) and genuinely suspicious characteristics (like obfuscated javascript, forms submitting to external domains, or iframe cloaking). Assess the risk level based on your findings.
-    ignore captchas.
+    """Role: You are a pragmatic web security consultant. Your goal is to provide a balanced risk assessment of a webpage's HTML, not to flag every minor deviation from best practices.
+
+Task: Review the provided HTML content with a lenient perspective. Assume benign intent unless there is strong, direct evidence of malicious activity. Your analysis should distinguish between unconventional coding and genuine, high-impact threats. All CAPTCHA-related code should be ignored.
+
+Guiding Principles for Leniency:
+
+    Focus on Intent: Don't just look at what the code does, but the likely intent. A form submitting to a third-party CRM like HubSpot is different from one submitting to a random IP address.
+
+    Acknowledge Modern Ecosystems: Many sites use numerous third-party scripts for analytics, ads, and functionality. Do not flag external scripts or cross-domain form submissions unless the destination is a known malicious entity or the behavior is highly suspicious (e.g., keylogging).
+
+    Reserve "High Risk" for Clear Danger: Only assign a high-risk rating for unequivocal threats like obfuscated credential-stealing scripts, drive-by-download activators, or phishing kits. Poorly written code or unusual structure is not, by itself, a high-risk indicator.
     HTML: {html_content}
 
     Provide your response in the following format:
@@ -74,7 +83,7 @@ moderator_prompt = PromptTemplate.from_template(
     
     A "Claim" can be 'phishing', 'benign', or 'suspicious'. Treat 'suspicious' and 'phishing' as being on the same side of the argument against 'benign'.
 
-    - If all agents agree (e.g., all claims are 'phishing' or 'suspicious', or all are 'benign'), respond with only the word: CONSENSUS
+    - If majority agents agree (e.g., all claims are 'phishing' or 'suspicious', or all are 'benign'), respond with only the word: CONSENSUS
     - If there is any disagreement, respond with only the word: CONFLICT
 
     Latest Analyses:

@@ -4,6 +4,9 @@ import json
 from phish_guardian_lib.workflow import app as phish_guardian_app
 from phish_guardian_lib.utils import preprocess_webpage
 from phish_guardian_lib.tools.web_fetcher_tool import fetch_webpage_content
+import webbrowser
+import pathlib
+import tempfile
 
 def analyze_url(url: str):
     """
@@ -45,9 +48,61 @@ def analyze_url(url: str):
     print(json.dumps(report, indent=2))
     print("---------------------------------")
 
+    # Render the report into the HTML template and open it in the default browser
+    try:
+        template_path = pathlib.Path("templat.html")
+        if not template_path.exists():
+            print("Template file templat.html not found. Skipping HTML report generation.")
+            return
+
+        html = template_path.read_text(encoding="utf-8")
+
+        # Find 'const reportData = ' and replace the JS object following it by matching braces.
+        marker = 'const reportData = '
+        start = html.find(marker)
+        if start == -1:
+            print("Marker 'const reportData = ' not found in template. Skipping HTML report generation.")
+            return
+
+        obj_start = html.find('{', start)
+        if obj_start == -1:
+            print("Could not find object start after reportData marker. Skipping.")
+            return
+
+        # Find matching closing brace
+        depth = 0
+        idx = obj_start
+        end_idx = -1
+        while idx < len(html):
+            if html[idx] == '{':
+                depth += 1
+            elif html[idx] == '}':
+                depth -= 1
+                if depth == 0:
+                    end_idx = idx
+                    break
+            idx += 1
+
+        if end_idx == -1:
+            print("Could not find matching closing brace for reportData object. Skipping.")
+            return
+
+        before = html[:start]
+        after = html[end_idx+1:]
+        injected_obj = json.dumps(report, indent=2)
+        new_html = before + marker + injected_obj + after
+
+        # Write to a temp file to avoid overwriting the template
+        tmp = pathlib.Path(tempfile.gettempdir()) / "phishguardian_report.html"
+        tmp.write_text(new_html, encoding="utf-8")
+        webbrowser.open_new_tab(tmp.as_uri())
+        print(f"Opened report in browser: {tmp}")
+    except Exception as e:
+        print(f"Failed to render/open HTML report: {e}")
+
 
 if __name__ == "__main__":
     # Example that might cause conflict (e.g., a simple login page on a weird domain)
     # Replace with a URL you want to test
-    sample_url = "https://www.amazon.in/" 
+    sample_url = "http://ezmaoocpfg.duckdns.org/en/main" 
     analyze_url(sample_url)
