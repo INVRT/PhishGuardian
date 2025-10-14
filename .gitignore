@@ -1,2 +1,5 @@
 .env
 .env.txt
+
+phish_guardian_lib/screenshots/
+phish_guardian_lib/__pycache__/

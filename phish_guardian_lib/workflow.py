@@ -2,14 +2,14 @@ from langgraph.graph import StateGraph, END
 from typing import TypedDict, Dict
 from .config import llm
 from .agents import prompts
-from .tools.online_search import search_online_knowledge
-from .tools import take_screenshot_of_url
+from .tools import search_online_knowledge, take_screenshot_of_url
 
-# --- 1. Define Graph State ---
+# --- 1. Define the COMPLETE Graph State ---
 class GraphState(TypedDict):
-    screenshot: str  # Path to the suspicious screenshot
+    webpage_data: dict # CRITICAL: This key was missing
+    screenshot: str
     specialist_analyses: Dict[str, str]
-    visual_analysis_report: dict # To store the visual agent's findings
+    visual_analysis_report: str # Changed to string for clean content
     verification_results: dict
     judge_verdict: str
     judge_reasoning: str
@@ -24,7 +24,6 @@ def run_specialists(state: GraphState):
     print("--- Running Specialist Agents ---")
     data = state['webpage_data']
     
-    # In a real scenario, you could run these in parallel
     analyses = {
         "URL Analyst": create_agent_chain(prompts.url_analyst_prompt).invoke(data),
         "HTML Analyst": create_agent_chain(prompts.html_analyst_prompt).invoke(data),
@@ -37,96 +36,90 @@ def run_specialists(state: GraphState):
 def run_verification(state: GraphState):
     print("--- Running Verification ---")
     domain = state['webpage_data']['domain']
-    # A more advanced agent could extract the brand from the Brand Analyst's response
-    # Dynamically get the brand from the Brand Analyst's response
-    brand_analyst_response = state['specialist_analyses']['Brand Analyst']
-    # This is a simple parsing. You might need a more robust method
-    # depending on the exact output format of your Brand Analyst.
+    
+    # IMPROVED: More robustly parse the brand from the Brand Analyst's response content
+    brand_analyst_response = state['specialist_analyses']['Brand Analyst'].content
     try:
-        # Assuming the agent's output is something like "Claim: Impersonating Microsoft. Evidence: ..."
-        identified_brand = brand_analyst_response.content.split("Impersonating ")[1].split(".")[0]
-    except IndexError:
+        # Find the line with "Evidence:" and extract the brand name
+        identified_brand = next(line for line in brand_analyst_response.split('\n') if 'Evidence:' in line).split('Evidence:')[1].strip()
+    except (StopIteration, IndexError):
         identified_brand = "Unknown"
 
-    brand_results = search_online_knowledge.invoke({"query": identified_brand, "search_type": "brand"})
-        
     domain_results = search_online_knowledge.invoke({"query": domain, "search_type": "domain"})
+    brand_results = search_online_knowledge.invoke({"query": identified_brand, "search_type": "brand"})
     
-    return {"verification_results": {"domain": domain_results, "brand": brand_results}}
+    # IMPROVED: Return the identified brand for use in the final report
+    return {"verification_results": {"domain_results": domain_results, "brand_results": brand_results, "identified_brand": identified_brand}}
 
-
+# --- Node 3: Run Visual Anomaly Analysis ---
 def run_visual_analysis(state: GraphState):
     print("--- Running Visual Anomaly Agent ---")
-
     legitimate_domains = state['verification_results'].get('brand_results', [])
     if not legitimate_domains:
-        return {"visual_analysis_report": {"error": "No legitimate domain found for comparison."}}
+        return {"visual_analysis_report": "Error: No legitimate domain found for comparison."}
 
-    # Use the new, dedicated screenshot tool
     legitimate_url = f"http://{legitimate_domains[0]}"
     legit_screenshot_path = take_screenshot_of_url.invoke(legitimate_url)
 
     if "Error:" in legit_screenshot_path:
-        return {"visual_analysis_report": {"error": legit_screenshot_path}}
+        return {"visual_analysis_report": legit_screenshot_path}
 
-    # The rest of the function remains the same...
     report = create_agent_chain(prompts.visual_anomaly_prompt).invoke({
         "suspicious_screenshot": state['screenshot'],
         "legitimate_screenshot": legit_screenshot_path
     })
 
-    return {"visual_analysis_report": report}
+    # IMPROVED: Return just the content string
+    return {"visual_analysis_report": report.content}
 
-# --- Node 3: Run the Judge ---
+# --- Node 4: Run the Judge ---
 def run_judge(state: GraphState):
     print("--- Running Judge ---")
     history = {
-        "specialists": state['specialist_analyses'],
+        "specialists": {k: v.content for k, v in state['specialist_analyses'].items()},
         "verification": state['verification_results'],
-        "visual_analysis": state['visual_analysis_report'] 
+        "visual_analysis": state.get('visual_analysis_report', 'Not available')
     }
     verdict = create_agent_chain(prompts.judge_prompt).invoke({"history": str(history)})
-    # In a real app, you'd parse this more robustly
+    
     decision = "PHISHING" if "PHISHING" in verdict.content.upper() else "BENIGN"
     return {"judge_verdict": decision, "judge_reasoning": verdict.content}
 
-# --- Node 4: Run Intent Analysis (Conditional) ---
+# --- Node 5: Run Intent Analysis (Conditional) ---
 def run_intent_agent(state: GraphState):
     print("--- Running Intent Agent ---")
+    analyses_content = {k: v.content for k, v in state['specialist_analyses'].items()}
     intention = create_agent_chain(prompts.intent_agent_prompt).invoke({
-        "analyses": str(state['specialist_analyses'])
+        "analyses": str(analyses_content)
     })
     return {"malicious_intention": intention.content}
 
 # --- Conditional Edge Logic ---
 def should_run_intent_analysis(state: GraphState):
-    if state["judge_verdict"] == "PHISHING":
-        return "run_intent_agent"
-    else:
-        return "end"
+    return "run_intent_agent" if state["judge_verdict"] == "PHISHING" else END
 
-# --- 4. Assemble the Graph ---
-# --- Update 4. Assemble the Graph ---
+# --- Assemble the Graph ---
 workflow = StateGraph(GraphState)
 
-# Add all nodes, including the new one
 workflow.add_node("run_specialists", run_specialists)
 workflow.add_node("run_verification", run_verification)
-workflow.add_node("run_visual_analysis", run_visual_analysis) # New node
+workflow.add_node("run_visual_analysis", run_visual_analysis)
 workflow.add_node("run_judge", run_judge)
 workflow.add_node("run_intent_agent", run_intent_agent)
 
-# Define the new workflow sequence
 workflow.set_entry_point("run_specialists")
 workflow.add_edge("run_specialists", "run_verification")
-workflow.add_edge("run_verification", "run_visual_analysis") # New edge
-workflow.add_edge("run_visual_analysis", "run_judge")       # New edge
+workflow.add_edge("run_verification", "run_visual_analysis")
+workflow.add_edge("run_visual_analysis", "run_judge")
 workflow.add_conditional_edges(
     "run_judge",
     should_run_intent_analysis,
-    {"run_intent_agent": "run_intent_agent", "end": END}
+    {
+        "run_intent_agent": "run_intent_agent",
+        END: END
+    }
 )
 workflow.add_edge("run_intent_agent", END)
 
-# Compile the app
+# Compile and Export the App
 app = workflow.compile()
