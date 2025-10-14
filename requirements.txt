@@ -1,0 +1,13 @@
+# Core LangChain and Google Gemini libraries
+langchain
+langchain-google-genai
+langgraph
+
+# Web scraping and utilities
+beautifulsoup4
+python-dotenv
+
+# Optional for serving as an API
+fastapi
+uvicorn
+playwright

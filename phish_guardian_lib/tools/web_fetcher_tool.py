@@ -1,0 +1,39 @@
+from langchain.tools import tool
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+import os
+
+@tool
+def fetch_webpage_content(url: str) -> dict:
+    """
+    Navigates to a URL to fetch its HTML content and take a screenshot.
+    Returns a dictionary with the HTML and the path to the screenshot.
+    """
+    print(f"--- TOOL USED: Fetching content for '{url}' ---")
+    
+    # Define the correct path inside the library
+    screenshot_dir = "phish_guardian_lib/screenshots"
+    os.makedirs(screenshot_dir, exist_ok=True)
+    
+    safe_filename = url.replace('http://', '').replace('https://', '').replace('/', '_') + "_suspicious.png"
+    screenshot_path = os.path.join(screenshot_dir, safe_filename)
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.goto(url, timeout=15000)
+            
+            # Fetch HTML content
+            html_content = page.content()
+            
+            # Take screenshot
+            page.screenshot(path=screenshot_path, full_page=True)
+            
+            browser.close()
+            
+            return {
+                "html_content": html_content,
+                "screenshot_path": screenshot_path
+            }
+    except Exception as e:
+        return {"error": f"Failed to fetch content from {url}. Reason: {e}"}
