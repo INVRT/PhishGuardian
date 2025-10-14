@@ -30,12 +30,17 @@ def analyze_url(url: str):
     }
     final_state = phish_guardian_app.invoke(initial_state)
 
-    # Format and print the final report
+    specialist_reports = {
+        agent: response.content if hasattr(response, 'content') else response 
+        for agent, response in final_state.get('specialist_analyses', {}).items()
+    }
+
     report = {
         "decision": final_state.get('judge_verdict'),
         "reasoning": final_state.get('judge_reasoning'),
         "malicious_intention": final_state.get('malicious_intention', 'N/A'),
-        "visual_analysis": final_state.get('visual_analysis_report', 'N/A'), # Added for completeness
+        "specialist_analyses": specialist_reports, # ADDED FOR TRANSPARENCY
+        #"visual_analysis": final_state.get('visual_analysis_report', 'N/A'),
         "verification_data": final_state.get('verification_results')
     }
     
@@ -46,5 +51,5 @@ def analyze_url(url: str):
 
 if __name__ == "__main__":
     # Example usage with sample data
-    sample_url = "https://www.amazon.com/"    
+    sample_url = "https://nowverify.webflow.io/"    
     analyze_url(sample_url)

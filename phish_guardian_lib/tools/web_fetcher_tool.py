@@ -1,6 +1,8 @@
 from langchain.tools import tool
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 import os
+from urllib.parse import urlparse, quote
+import re
 
 @tool
 def fetch_webpage_content(url: str) -> dict:
@@ -14,7 +16,22 @@ def fetch_webpage_content(url: str) -> dict:
     screenshot_dir = "phish_guardian_lib/screenshots"
     os.makedirs(screenshot_dir, exist_ok=True)
     
-    safe_filename = url.replace('http://', '').replace('https://', '').replace('/', '_') + "_suspicious.png"
+    # Sanitize URL to create a safe filename for Windows and other OSes.
+    # Parse the URL and build a filename from netloc + path, percent-encoding unsafe parts.
+    parsed = urlparse(url.strip())
+    # If urlparse failed to identify netloc (e.g., url has leading whitespace or tabs), fallback
+    netloc = (parsed.netloc or parsed.path).strip()
+    path = parsed.path or ""
+
+    # Combine netloc and path and percent-encode
+    combined = netloc + path
+    # Replace backslashes, tabs, and control characters
+    combined = re.sub(r"[\x00-\x1f\\<>:\"/|?*]", "_", combined)
+    # Truncate to reasonable length
+    if len(combined) > 200:
+        combined = combined[:200]
+
+    safe_filename = f"{combined}_suspicious.png"
     screenshot_path = os.path.join(screenshot_dir, safe_filename)
     
     try:
