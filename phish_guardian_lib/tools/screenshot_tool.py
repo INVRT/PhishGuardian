@@ -20,7 +20,7 @@ def take_screenshot_of_url(url: str) -> str:
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(headless=False)
             page = browser.new_page()
             # Set a timeout for navigation
             page.goto(url, timeout=15000) 

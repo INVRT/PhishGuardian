@@ -19,7 +19,7 @@ def fetch_webpage_content(url: str) -> dict:
     
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(headless=False)
             page = browser.new_page()
             page.goto(url, timeout=15000)
             
