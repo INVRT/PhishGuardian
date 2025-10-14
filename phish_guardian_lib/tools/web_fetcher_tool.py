@@ -15,6 +15,17 @@ def fetch_webpage_content(url: str) -> dict:
     # Define the correct path inside the library
     screenshot_dir = "phish_guardian_lib/screenshots"
     os.makedirs(screenshot_dir, exist_ok=True)
+
+    # If the URL is a blob: URL, it cannot be fetched directly from outside the page
+    # Blob URLs are in-memory object URLs created by a page's JS context. Mark them as suspicious.
+    if url.strip().lower().startswith("blob:"):
+        return {
+            "error": f"Blob URLs cannot be fetched externally: {url}",
+            "screenshot_path": None,
+            "html_content": None,
+            "decision": "PHISHING",
+            "reason": "PHISHING - Blob URL detected — not fetchable outside original page context"
+        }
     
     # Sanitize URL to create a safe filename for Windows and other OSes.
     # Parse the URL and build a filename from netloc + path, percent-encoding unsafe parts.

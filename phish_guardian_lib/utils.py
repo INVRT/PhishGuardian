@@ -1,3 +1,4 @@
+import base64
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
@@ -30,3 +31,7 @@ def preprocess_webpage(url: str, html_content: str):
     except Exception as e:
         print(f"Error during preprocessing: {e}")
         return {} # Return an empty dict on failure
+    
+def image_to_base64(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode('utf-8')

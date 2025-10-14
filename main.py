@@ -1,17 +1,16 @@
+# main.py
+
 import json
 from phish_guardian_lib.workflow import app as phish_guardian_app
 from phish_guardian_lib.utils import preprocess_webpage
-
-# 1. UPDATE: Function now accepts a path to the screenshot
 from phish_guardian_lib.tools.web_fetcher_tool import fetch_webpage_content
 
 def analyze_url(url: str):
     """
-    Runs the full PhishGuardian analysis starting from just a URL.
+    Runs the full PhishGuardian analysis with debate starting from just a URL.
     """
     print(f"--- Starting PhishGuardian Analysis for: {url} ---")
     
-    # 1. Fetch the data automatically
     web_data = fetch_webpage_content.invoke(url)
     if "error" in web_data:
         print(web_data["error"])
@@ -20,27 +19,25 @@ def analyze_url(url: str):
     html_content = web_data["html_content"]
     screenshot_path = web_data["screenshot_path"]
     
-    # 2. Preprocess the fetched data
     preprocessed_data = preprocess_webpage(url, html_content)
     
-    # The rest of the workflow remains the same...
+    # Initialize the state for the graph
     initial_state = {
         "webpage_data": preprocessed_data,
-        "screenshot": screenshot_path 
+        "screenshot": screenshot_path,
+        "debate_history": [],
+        "round_number": 0,
     }
+    
+    # Invoke the graph
     final_state = phish_guardian_app.invoke(initial_state)
 
-    specialist_reports = {
-        agent: response.content if hasattr(response, 'content') else response 
-        for agent, response in final_state.get('specialist_analyses', {}).items()
-    }
-
+    # Compile the final report
     report = {
         "decision": final_state.get('judge_verdict'),
         "reasoning": final_state.get('judge_reasoning'),
         "malicious_intention": final_state.get('malicious_intention', 'N/A'),
-        "specialist_analyses": specialist_reports, # ADDED FOR TRANSPARENCY
-        #"visual_analysis": final_state.get('visual_analysis_report', 'N/A'),
+        "debate_summary": final_state.get('debate_history', []),
         "verification_data": final_state.get('verification_results')
     }
     
@@ -50,6 +47,7 @@ def analyze_url(url: str):
 
 
 if __name__ == "__main__":
-    # Example usage with sample data
-    sample_url = "https://nowverify.webflow.io/"    
+    # Example that might cause conflict (e.g., a simple login page on a weird domain)
+    # Replace with a URL you want to test
+    sample_url = "https://www.amazon.in/" 
     analyze_url(sample_url)
