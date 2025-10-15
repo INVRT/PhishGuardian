@@ -92,7 +92,6 @@ def analyze_url(url: str):
         injected_obj = json.dumps(report, indent=2)
         new_html = before + marker + injected_obj + after
 
-        # Write to a temp file to avoid overwriting the template
         tmp = pathlib.Path(tempfile.gettempdir()) / "phishguardian_report.html"
         tmp.write_text(new_html, encoding="utf-8")
         webbrowser.open_new_tab(tmp.as_uri())
@@ -102,7 +101,7 @@ def analyze_url(url: str):
 
 
 if __name__ == "__main__":
-    # Example that might cause conflict (e.g., a simple login page on a weird domain)
-    # Replace with a URL you want to test
-    sample_url = "http://ezmaoocpfg.duckdns.org/en/main" 
+
+    # sample_url = "https://www.amazon.com/" 
+    sample_url = "https://official.startamazonstore.com:37831/#/pages/login/login"
     analyze_url(sample_url)
