@@ -3,6 +3,7 @@
 import json
 from phish_guardian_lib.workflow import app as phish_guardian_app
 from phish_guardian_lib.attacker import generate_phishing_variant
+from phish_guardian_lib.learning.score_update import update_agent_scores
 
 
 def defend(attack_data: dict):
